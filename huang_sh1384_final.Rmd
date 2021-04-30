@@ -38,12 +38,24 @@ Import the data and show the dimension and names of all attributes of the data. 
 ```{r laod-data}
 url <- "https://raw.githubusercontent.com/TimotheusHuang/msds597finalproj/main/movie_metadata.csv"
 IMDB <- as_tibble(read.csv(url, stringsAsFactors = FALSE))
-class(IMDB)
-```
-
-```{r data-dimension-names}
 dim(IMDB)
 colnames(IMDB)
+```
+
+Here is the preview the raw data.
+```{r raw-data-preview}
+DT::datatable(IMDB %>% top_n(n = 100),
+              options = list(
+                # columnDefs = list(list(className = 'dt-center', target = 0)),
+                autoWidth = TRUE,
+                pageLength = 5,
+                lengthMenu = c(5, 10, 15, 20),
+                initComplete = JS(
+                  "function(settings, json) {",
+                  "$(this.api().table().header()).css({'background-color': '#4AA4DE', 'color': '#000'});",
+                  "}"
+                )
+              ))
 ```
 
 ## Data Cleaning
@@ -55,10 +67,10 @@ IMDB <- IMDB %>%
   mutate(plot_keywords_new = str_replace_all(plot_keywords, "\\|", " "))
 ```
 
-Second, remove the duplicates in the data in "movie_title" column as duplicate data may skew  analysis. Thus, these 126 duplicate movie were removed.
+Second, remove the duplicates in the data in "movie_title" column as they may affect later analysis. Thus, these 126 duplicate movies were removed.
 ```{r duplicate-rmv}
 sum(duplicated(IMDB$movie_title))
-IMDB <- IMDB[!duplicated(IMDB),]
+IMDB <- IMDB[!duplicated(IMDB$movie_title),]
 ```
 
 Third, there are columns that contain currency, such as the "budget" and "gross". These columns for a few countries were not converted to US dollars, including "South Korea", "Japan", "Thailand", ..., etc. This might cause problems in later analysis and make the problem even more complicated, if taking inflation into consideration. Thus, only movies from USA were kept for profitability analysis.
@@ -66,7 +78,7 @@ Third, there are columns that contain currency, such as the "budget" and "gross"
 IMDB %>% select(movie_title, budget, country, gross) %>% arrange(desc(budget))
 ```
 
-Then, I created a column "profit_flag" to indicate if a movie is profitable, i.e, Revenue $>$ Budget, where 1 means profitable. As this involving both "gross" and "budget" columns, only movies from USA have non-empty value for this column. Then, save it to an Excel file for people who want to focus only on USA films.
+Then, I created a column "profitable" to indicate if a movie is profitable, '1' when Profit $>$ Budget, and so it's profitable. As this involving both "gross" and "budget" columns, only movies from USA have non-empty value for this column. Then, save it to an Excel file for people who want to focus only on USA films.
 ```{r imdb-usa}
 IMDB.USA <- IMDB %>%
   filter(country == "USA") %>%
@@ -86,25 +98,14 @@ IMDB %>%
   # map(., ~sum(is.na(.)))
 ```
 
-Here is the preview of the cleaned data and it is saved to an Excel file.
-```{r data-preivew}
+Finishing the cleaning process, check dimesnion and list columns names of the cleaned data. Then, save it to an csv file.
+```{r save-cleaned-data}
+dim(IMDB)
+colnames(IMDB)
 write.xlsx(IMDB, file = "IMDB-cleaned.xlsx")
-
-DT::datatable(IMDB %>% top_n(n = 100),
-              options = list(
-                # columnDefs = list(list(className = 'dt-center', target = 0)),
-                autoWidth = TRUE,
-                pageLength = 5,
-                lengthMenu = c(5, 10, 15, 20),
-                initComplete = JS(
-                  "function(settings, json) {",
-                  "$(this.api().table().header()).css({'background-color': '#4AA4DE', 'color': '#000'});",
-                  "}"
-                )
-              ))
 ```
 
-Note that, after finishing all the cleaning process, there are 3768 rows that do not have any missing value and they are also saved to an Excel sheets for future use.
+Note that, after finishing all the cleaning process, there are 3768 rows that do not have any missing value and they are also saved to an Excel sheet.
 ```{r complete-cases}
 sum(complete.cases(IMDB %>% drop_na()))
 write.xlsx(IMDB %>% drop_na(), file = "IMDB-complete-only.xlsx")
@@ -112,7 +113,7 @@ write.xlsx(IMDB %>% drop_na(), file = "IMDB-complete-only.xlsx")
 
 ## Data Description
 The following table lists the name, type, and description of each variable in the dataset.
-```{r}
+```{r data-description}
 Var.tab <- tibble(
   Name = colnames(IMDB),
   Type = sapply(IMDB, typeof),
@@ -126,7 +127,7 @@ Var.tab <- tibble(
     "Name of Actor No.2",
     "Number of FB Page Likes of Actor No.1",
     "Gross Earned in US Dollars",
-    "Categorization: `Action`, `Comedy`, `Drama`, ..., etc.",
+    "Classification: `Action`, `Comedy`, `Drama`, ..., etc.",
     "Name of Actor No.1",
     "Title of the Movie",
     "Number of Voted Users on IMDB",
@@ -150,13 +151,13 @@ Var.tab <- tibble(
     # "Flag indicating profitability of the movie (1-profit, 0-loss)"
   )
 )
-# Var.tab <- as_tibble(cbind(Var.tab.name,Var.tab.type,Var.tab.desc))
-# colnames(Var.tab) <- c("Variable Name","Type","Description")
 knitr::kable(Var.tab, "simple")
 ```
 
 
 # Exploratory Data Analysis
+The exploratory analysis is done on four main aspects: Genre, Country, IMDB score, and Profitability. But before that, we can start with some interesting statistics about the data like "Top 10 something".
+
 ## Basic Analysis
 
 ### Number of Movies Released per Year
@@ -171,21 +172,23 @@ IMDB[!is.na(IMDB$title_year), ] %>%
 ```
 
 ## Genre-wise Analysis
-
-Construct the document-term matrix for genres.
+Since most of movies in this dataset were categorized as multiple genres, some preprocessing on the genres must be done before actually analyzing the data. 
+### Genres Preprocessing
+First, the document-term matrix for genres was constructed using the package "TM".
 ```{r construct-dtm}
 genres.dtm <- DocumentTermMatrix(Corpus(VectorSource(IMDB[!is.na(IMDB$genres_new), ]$genres_new)))
 genres.dtm
 ```
 
-Use document-term matrix to calculate frequency for each genre.
+Then, the created document-term matrix was used to calculate frequency for each genre.
 ```{r convert-dtm-to-freq}
 genres.freq <- colSums(as.matrix(genres.dtm))
 genres.freq <- tibble(genre = names(genres.freq), count = genres.freq) %>% arrange(desc(count))
 genres.freq
 ```
-  
-Plot distribution of genres frequency. We can see that the top 3 movie genres are Drama, Comedy, and Thriller.
+
+### Analysis
+After preprocessing was done, we can start doing analysis about the genres data. First, we try to find which genres are used the most. By plotting distribution of genres frequency, we can see that the top 5 movie genres are `Drama`, `Comedy`, `thriller`, `Action`, and `Romance`.
 ```{r genre-freq-distr}
 genres.freq %>%
   plot_ly(
@@ -196,9 +199,9 @@ genres.freq %>%
   layout(title = "Movie Genre Frequency Distribution", xaxis = list(title = "genre"))
 ```
 
-Now, we want identify which genre tend to have higher budget/gross/profit? As mentioned previously, this part only dealing with movies from USA due to the currency conversion issue. 
+Now, we want identify which genre tend to have higher budget/gross/profit. As mentioned previously, this part only dealing with movies from USA due to the currency conversion issue. 
 
-Calculate budget, gross, and profit (= gross - budget) for each genre.
+So, first, we calculate the average `budget`, `gross`, and `profit` (= `gross` - `budget`) for each genre.
 ```{r genre-profitability}
 IMDB.USA.genre <- IMDB.USA %>% 
   drop_na(genres_new, gross, budget) %>%
@@ -212,7 +215,11 @@ IMDB.USA.genre <- IMDB.USA %>%
 IMDB.USA.genre
 ```
 
-Compare them using a grouped bar chart.
+Then, we compared them using a grouped bar chart sorted by a descending order of the mean profit. From the plot, we can find a few things:
+1. Top 3 most profitable genres are `Animation`, `Family`, and `Musical`.
+2. In general, films of genres of bigger budget ($> \$80M$) tend to earn more profit, with `Action` being the only exception.
+3. Low-budget films of genres such as `Musical` and `Comedy` are really good investments.
+4. All the top 5 popular genres (`Drama`, `Comedy`, `thriller`, `Action`, and `Romance`) have average profit less than $\$20M$.
 ```{r genre-profitability-breakdown}
 IMDB.USA.genre %>% 
   plot_ly(
