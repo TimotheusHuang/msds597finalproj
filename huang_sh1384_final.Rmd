@@ -25,6 +25,7 @@ library(wordcloud)
 library(fitdistrplus)
 library(plotly)
 library(ggrepel)
+library(openxlsx)
 ```
 
 # Data Preparation
@@ -65,11 +66,13 @@ Third, there are columns that contain currency, such as the "budget" and "gross"
 IMDB %>% select(movie_title, budget, country, gross) %>% arrange(desc(budget))
 ```
 
-Then, I created a column "profit_flag" to indicate if a movie is profitable, i.e, Revenue $>$ Budget, where 1 means profitable. As this involving both "gross" and "budget" columns, only movies from USA have non-empty value for this column.
+Then, I created a column "profit_flag" to indicate if a movie is profitable, i.e, Revenue $>$ Budget, where 1 means profitable. As this involving both "gross" and "budget" columns, only movies from USA have non-empty value for this column. Then, save it to an Excel file for people who want to focus only on USA films.
 ```{r imdb-usa}
 IMDB.USA <- IMDB %>%
   filter(country == "USA") %>%
   mutate(profitable = as.factor(ifelse(gross > budget, 1, 0)))
+
+write.xlsx(IMDB.USA, file = "IMDB-USA.xlsx")
 ```
 
 Last, ragarding records that contain missing values, in order to keep the entire dataset as complete as possible, I decided to not remove any rows with missing data and to deal with this issue for each individual analysis. For example, when doing genre-wise analysis, records that don't have values for genre variables are excluded from the analysis.
@@ -83,13 +86,10 @@ IMDB %>%
   # map(., ~sum(is.na(.)))
 ```
 
-After finishing all the cleaning process, there are 3768 rows that do not have any missing value.
-```{r complete-cases}
-sum(complete.cases(IMDB %>% drop_na()))
-```
-
-Here is the preview of the data.
+Here is the preview of the cleaned data and it is saved to an Excel file.
 ```{r data-preivew}
+write.xlsx(IMDB, file = "IMDB-cleaned.xlsx")
+
 DT::datatable(IMDB %>% top_n(n = 100),
               options = list(
                 # columnDefs = list(list(className = 'dt-center', target = 0)),
@@ -102,6 +102,12 @@ DT::datatable(IMDB %>% top_n(n = 100),
                   "}"
                 )
               ))
+```
+
+Note that, after finishing all the cleaning process, there are 3768 rows that do not have any missing value and they are also saved to an Excel sheets for future use.
+```{r complete-cases}
+sum(complete.cases(IMDB %>% drop_na()))
+write.xlsx(IMDB %>% drop_na(), file = "IMDB-complete-only.xlsx")
 ```
 
 ## Data Description
