@@ -1,1 +1,1 @@
-# msds597finalprojFirst Commit from RStudio
+# MSDS597 Data Wrangling Final Project: Movie Exploratory Data Analysis on IMDB Dataset
