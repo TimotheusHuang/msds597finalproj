@@ -119,22 +119,22 @@ Var.tab <- tibble(
     "Number of FB Page Likes of Actor No.3",
     "Name of Actor No.2",
     "Number of FB Page Likes of Actor No.1",
-    "Gross Earned by the movie in US Dollars",
-    "Genres of the movie",
+    "Gross Earned in US Dollars",
+    "Categorization: `Action`, `Comedy`, `Drama`, ..., etc.",
     "Name of Actor No.1",
     "Title of the Movie",
     "Number of Voted Users on IMDB",
     "Total FB Page Likes of of the Entire Cast",
     "Name of Actor No.3",
     "Number of the Actors Featured in the Movie Poster",
-    "Keywords describing the movie plot",
+    "Keywords Describing the Plot",
     "IMDB Link of the Movie",
     "Number of Users who Reviewed the Movie",
-    "Language of the movie",
+    "Language of the movie: `English`, `French`, `Chinese`, ..., etc.",
     "Country where the Movie was Produced",
     "Content rating",
-    "Budget of the movie in US Dollars",
-    "Year ",
+    "Budget in US Dollars",
+    "Year of Release",
     "Number of FB Page Likes of Actor No.2",
     "IMDB Score on a Scale of 1 to 10",
     "Aspect Ratio",
@@ -172,7 +172,7 @@ genres.dtm <- DocumentTermMatrix(Corpus(VectorSource(IMDB[!is.na(IMDB$genres_new
 genres.dtm
 ```
 
-Use document-term matrix to calculate frequency for each genre
+Use document-term matrix to calculate frequency for each genre.
 ```{r convert-dtm-to-freq}
 genres.freq <- colSums(as.matrix(genres.dtm))
 genres.freq <- tibble(genre = names(genres.freq), count = genres.freq) %>% arrange(desc(count))
@@ -420,7 +420,5 @@ IMDB.USA.profit %>%
   arrange(desc(avg_profit,budget,ROI)) %>%
   top_n(15, avg_profit)
 ```
-
-
 
 # References
