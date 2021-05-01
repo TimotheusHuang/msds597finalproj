@@ -31,7 +31,7 @@ library(openxlsx)
 # Data Preparation
 The dataset used in this project is the IMDB 5000 Movie Dataset from Kaggle, which can be accessed via this link: https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset. This dataset recorded information on 5043 movies across 66 countries from 1916 to 2016. The dataset is available in a csv format file and is of size 1MB.
 
-Each record in this dataset has 28 variables, including information such as ``Title of the movie'', ``Name of the movie director'', ``Country the movie was produced in'', ``Budget of the movie (\$)'', ``profitability'', and ``IMDB score for the movie (out of 10)''.
+Each record in this dataset has 28 variables, including information such as `Title of the movie`, `Name of the movie director`, `Country the movie was produced in`, `Budget of the movie (\$)`, `profitability`, and `IMDB score for the movie (out of 10)`.
 
 ## Data Import
 Import the data and show the dimension and names of all attributes of the data. There are 5043 movies recorded in this dataset, and each of which has 28 attributes. Note that as Kaggle requires a username and password to download the dataset, I am sourcing the same data from my Github repository.
@@ -59,7 +59,7 @@ DT::datatable(IMDB %>% top_n(n = 100),
 ```
 
 ## Data Cleaning
-First, removing spurious characters from the movie title, genre and plot keyword columns.
+First, removing spurious characters from the `movie_title`, `genre` and `plot_keyword` columns.
 ```{r spur-char-rmv}
 IMDB <- IMDB %>%
   mutate(movie_title = str_replace_all(movie_title, "\\Â", "")) %>%
@@ -67,18 +67,18 @@ IMDB <- IMDB %>%
   mutate(plot_keywords_new = str_replace_all(plot_keywords, "\\|", " "))
 ```
 
-Second, remove the duplicates in the data in "movie_title" column as they may affect later analysis. Thus, these 126 duplicate movies were removed.
+Second, remove the duplicates in the data in `movie_title` column as they may affect later analysis. Thus, these 126 duplicate movies were removed.
 ```{r duplicate-rmv}
 sum(duplicated(IMDB$movie_title))
 IMDB <- IMDB[!duplicated(IMDB$movie_title),]
 ```
 
-Third, there are columns that contain currency, such as the "budget" and "gross". These columns for a few countries were not converted to US dollars, including "South Korea", "Japan", "Thailand", ..., etc. This might cause problems in later analysis and make the problem even more complicated, if taking inflation into consideration. Thus, only movies from USA were kept for profitability analysis.
+Third, there are columns that contain currency, such as the `budget` and `gross`. These columns for a few countries were not converted to US dollars, including "South Korea", "Japan", "Thailand", ..., etc. This might cause problems in later analysis and make the problem even more complicated, if taking inflation into consideration. Thus, only movies from USA were kept for profitability analysis.
 ```{r currency-issue}
 IMDB %>% select(movie_title, budget, country, gross) %>% arrange(desc(budget))
 ```
 
-Then, I created a column "profitable" to indicate if a movie is profitable, '1' when Profit $>$ Budget, and so it's profitable. As this involving both "gross" and "budget" columns, only movies from USA have non-empty value for this column. Then, save it to an Excel file for people who want to focus only on USA films.
+Then, I created a column `profitable` to indicate if a movie is profitable, '1' when `profit` $>$ `budget`, and so it's profitable. As this involving both `gross` and `budget` columns, only movies from USA have non-empty value for this column. Then, save it to an Excel file for people who want to focus only on USA films.
 ```{r imdb-usa}
 IMDB.USA <- IMDB %>%
   filter(country == "USA") %>%
@@ -89,7 +89,7 @@ write.xlsx(IMDB.USA, file = "IMDB-USA.xlsx")
 
 Last, ragarding records that contain missing values, in order to keep the entire dataset as complete as possible, I decided to not remove any rows with missing data and to deal with this issue for each individual analysis. For example, when doing genre-wise analysis, records that don't have values for genre variables are excluded from the analysis.
 
-Columns that contain most "NA" entries are "gross", "budget", and "aspect_ratio".
+Columns that contain most "NA" entries are `gross`, `budget`, and `aspect_ratio`.
 ```{r comp-NAs}
 IMDB %>% 
   summarise_all(~ sum(is.na(.))) %>%
@@ -188,7 +188,7 @@ genres.freq
 ```
 
 ### Analysis
-After preprocessing was done, we can start doing analysis about the genres data. First, we try to find which genres are used the most. By plotting distribution of genres frequency, we can see that the top 5 movie genres are `Drama`, `Comedy`, `thriller`, `Action`, and `Romance`.
+After preprocessing was done, we can start doing analysis about the genres data. First, we try to find which genres are used the most. By plotting distribution of genres frequency, we can see that the top 5 movie genres are "Drama", "Comedy", "Thriller", "Action", and "Romance".
 ```{r genre-freq-distr}
 genres.freq %>%
   plot_ly(
@@ -216,10 +216,11 @@ IMDB.USA.genre
 ```
 
 Then, we compared them using a grouped bar chart sorted by a descending order of the mean profit. From the plot, we can find a few things:
-1. Top 3 most profitable genres are `Animation`, `Family`, and `Musical`.
-2. In general, films of genres of bigger budget ($> \$80M$) tend to earn more profit, with `Action` being the only exception.
-3. Low-budget films of genres such as `Musical` and `Comedy` are really good investments.
-4. All the top 5 popular genres (`Drama`, `Comedy`, `thriller`, `Action`, and `Romance`) have average profit less than $\$20M$.
+
+1. Top 3 most profitable genres are "Animation", "Family", and "Musical".
+2. In general, films of genres of bigger budget ($> \$80M$) tend to earn more profit, with "Action" being the only exception.
+3. Low-budget films of genres such as "Musical" and "Comedy" are really good investments.
+4. All the top 5 popular genres ("Drama", "Comedy", "Thriller", "Action", and "Romance") have average profit less than $\$20M$.
 ```{r genre-profitability-breakdown}
 IMDB.USA.genre %>% 
   plot_ly(
@@ -235,6 +236,7 @@ IMDB.USA.genre %>%
 
 ## Country-wise Analysis
 This part of the analysis aims to explory the nationality component of the data. First, we show the number of movies produced in each country through the years, as presented in the following heat map. We can see that most of the countries started producing movies in the early 2000s, except a handful which had prevalant movie production going on since the mid 1900s. Here are some insights that I've found:
+
 1. US has the most thriving movie industry, and movies are being produced since the early-mid nineties. 
 2. Japan, Italy, germany and France being only other countries which produced significant number of movies before 1980s.
 ```{r movies-years-country, fig.height=12}
