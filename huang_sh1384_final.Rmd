@@ -13,10 +13,10 @@ bibliography: references.bib
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, fig.align = "center", fig.width = 10)
 ```
 
-# Broad Goals
-The project's broad goal of is to explore the IMDB 5000 Movies dataset and address exciting issues such as the genre of movies that are mainly produced, IMDB score analysis, and profitability analysis. Moreover, if possible, I want to identify what set of features contribute to a highly rated/profitable film most significantly and try to predict a movie's profitability. 
+# Motiavtion \& Goal
+Although the main purpose of making film is entertainment, not earning enough profit puts filmmakers in an awkward situation that makes it difficult to keep producing high-quality movies. One most popular quality metric is the score from Internet Movie Database (IMDb).  Based on the movie metadata from IMDb, it would be interesting to analyze what makes a movie more successful than another, commercially and/or critically. So, the main goal of this project is to explore the IMDb dataset with focus on profit and IMDb score and present the findings in an intuitive and interactive way. And, if possible, to identify what features contribute to a highly rated/profitable film most significantly and try to predict a movie's profitability. 
 
-Below are the R packages required for this project.
+These are the R packages required for this project.
 ```{r load-packages, echo=TRUE}
 library(tidyverse)
 library(knitr)
@@ -28,18 +28,14 @@ library(openxlsx)
 ```
 
 # Data Sources \& Preparation
-The dataset used in this project came from the IMDB 5000 Movie Dataset from Kaggle. It recorded information on 5043 movies across 66 countries from 1916 to 2016. The dataset is available in a csv format file and is of size 1MB. Note that the original dataset is replaced on Kaggle website, and therefore I cannot access the original one. The following link is where I sourced the same data from: https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset [@Kaggle-IMDB-5000]. 
-
-Each record in this dataset has 28 variables, including information such as `Title of the movie`, `Name of the movie director`, `Country the movie was produced in`, `Budget of the movie (in USD)`, `Profitability`, and `IMDB score for the movie`.
-
-This section consists of the following tasks:
+The dataset used in this project came from the IMDb 5000 Movie Dataset from Kaggle. It recorded information on more than 5000 movies across 66 countries from 1916 to 2016. The dataset is available in a csv format file and is of size 1MB. Note that the original dataset is replaced on Kaggle website, and therefore I cannot access the original one. The following link is where I sourced the same data from: https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset [@Kaggle-IMDB-5000]. The data preparation part consists of the following tasks:
 
 1. Import the data.
 2. Clean and tidy up the data to ensure its quality and make it easy to analyze.
 3. Provide detailed data description.
 
 ## Load Data
-Import the data and show the dimension and names of all attributes of the data. There are 5043 movies recorded in this dataset, and each of which has 28 attributes. 
+Import the data and show the dimension and names of all attributes of the data. WThere are 5043 movies recorded in this dataset, and each record has 28 attributes., including information such as `Title of the movie`, `Name of the movie director`, `Country the movie was produced in`, `Budget of the movie (in USD)`, `Profitability`, and `IMDB score for the movie`.
 ```{r laod-data}
 url <- "https://raw.githubusercontent.com/TimotheusHuang/msds597finalproj/main/movie_metadata.csv"
 IMDB <- as_tibble(read.csv(url, stringsAsFactors = FALSE))
@@ -64,7 +60,7 @@ DT::datatable(IMDB %>% top_n(n = 100),
 ```
 
 ## Data Tidying \& Cleansing
-In order to get the data ready for analysis, some tidying and cleansing works need to be done. First, unnecessary characters from the `movie_title`, `genre` and `plot_keyword` columns were removed.
+In order to get the data ready for analysis, some tidying and cleansing works need to be done. First, unnecessary characters in the `movie_title`, `genre` and `plot_keyword` columns were removed.
 ```{r spur-char-rmv}
 IMDB <- IMDB %>%
   mutate(movie_title = str_replace_all(movie_title, "\\Â", "")) %>%
@@ -72,18 +68,18 @@ IMDB <- IMDB %>%
   mutate(plot_keywords_new = str_replace_all(plot_keywords, "\\|", " "))
 ```
 
-Second, duplicates in the data in `movie_title` column were removed as they may affect later analysis. In total, there are 126 duplicate movies being removed.
+Second, duplicates in the data in `movie_title` column were removed as they may affect later analysis. In total, 126 duplicate movies were removed.
 ```{r duplicate-rmv}
 sum(duplicated(IMDB$movie_title))
 IMDB <- IMDB[!duplicated(IMDB$movie_title),]
 ```
 
-Third, columns that contain currency, such as the `budget` and `gross`, may cause problems in later analysis because a few countries were not converted to US dollars, including "South Korea", "Japan", "Thailand", ..., etc. Furthermore, taking inflation into consideration makes the problem even more complicated. Thus, only movies from USA were kept for profitability analysis.
+Third, columns that contain currency, such as the `budget` and `gross`, may cause problems in later analysis because a few countries were not converted to US dollars, including "South Korea", "Japan", "Thailand", ..., etc. Furthermore, given that all of them are converted to US dollars, we still need to consider the inflation, and this makes the problem even more complicated. Thus, only movies from USA were kept for profitability analysis.
 ```{r currency-issue}
 IMDB %>% select(movie_title, budget, country, gross) %>% arrange(desc(budget))
 ```
 
-Then, an new column `profitable` was added to indicate if a movie is profitable, '1' means profitable (if `profit` $>$ `budget`). As this involving both `gross` and `budget` columns, only movies from USA have non-empty value for this column. Then, save it to an Excel file for people who want to focus only on USA films.
+Then, an new column `profitable` was added to indicate if a movie is profitable, '1' means profitable (that is, `profit` $>$ `budget`). As this involving both `gross` and `budget` columns, only movies from USA have non-empty value for this column. This version of data is also saved to an Excel file for people who want to focus only on USA films.
 ```{r imdb-usa}
 IMDB.USA <- IMDB %>%
   filter(country == "USA") %>%
@@ -92,7 +88,7 @@ IMDB.USA <- IMDB %>%
 write.xlsx(IMDB.USA, file = "IMDB-USA.xlsx")
 ```
 
-Last, ragarding records that contain missing values, in order to keep the entire dataset as complete as possible, I decided to not remove any rows with missing data and to deal with this issue for each individual analysis. For example, when doing genre-wise analysis, records that don't have values for genre variables are excluded from the analysis.
+Last, ragarding records that contain missing values, to keep the entire dataset as complete as possible, I decided to not remove any rows with missing data and to handle this issue for each individual analysis. For example, when doing genre-wise analysis, those without values for genre variables are excluded from the analysis.
 
 Columns that contain most "NA" entries are `gross`, `budget`, and `aspect_ratio`.
 ```{r comp-NAs}
@@ -110,7 +106,7 @@ colnames(IMDB)
 write.xlsx(IMDB, file = "IMDB-cleaned.xlsx")
 ```
 
-Note that, after finishing all the cleaning process, there are 3768 rows that do not have any missing value and they are also saved to an Excel sheet.
+Note that, after all the preprocessing, there are 3768 rows that do not have any missing value and they are also saved to an Excel sheet.
 ```{r complete-cases}
 sum(complete.cases(IMDB %>% drop_na()))
 write.xlsx(IMDB %>% drop_na(), file = "IMDB-complete-only.xlsx")
@@ -161,23 +157,23 @@ knitr::kable(Var.tab, "simple")
 
 
 # Exploratory Data Analysis
-The exploratory analysis is done on four main aspects: Genre, Country, IMDB score, and Profitability. But before that, we can start with some simple yet interesting statistics about the data like "Top 10 something".
+The analysis involves four main aspects: Genre, Country, IMDB score, and Profitability.
 
-## Basic Analysis
+<!-- ## Basic Analysis -->
 
-### Number of Movies Released per Year
-```{r movies-rel-yearly}
-IMDB[!is.na(IMDB$title_year), ] %>%
-  plot_ly(
-    x = ~ title_year,
-    name = "Movies Released Through the Years",
-    type = "histogram"
-  ) %>%
-  layout(xaxis = list(title = "Year"), xaxis = list(title = "Count"))
-```
+<!-- ### Number of Movies Released per Year -->
+<!-- ```{r movies-rel-yearly} -->
+<!-- IMDB[!is.na(IMDB$title_year), ] %>% -->
+<!--   plot_ly( -->
+<!--     x = ~ title_year, -->
+<!--     name = "Movies Released Through the Years", -->
+<!--     type = "histogram" -->
+<!--   ) %>% -->
+<!--   layout(xaxis = list(title = "Year"), xaxis = list(title = "Count")) -->
+<!-- ``` -->
 
 ## Genre-wise Analysis
-Since most of movies in this dataset were categorized as multiple genres, some preprocessing on the genres must be done before actually analyzing the data. 
+Since most of movies in this dataset were categorized as multiple genres, some preprocessing on the genres must be done before actually analyzing the data.
 
 ### Genres Preprocessing
 First, the document-term matrix for genres was constructed using the package "TM".
@@ -268,7 +264,7 @@ IMDB %>%
 
 ```
 
-English is the language in which most movies are made, and USA produces movies in 14 languages, most by any country.
+English is the language in which most movies are made, and US produces movies in most languages (14).
 ```{r movies-country-langs, fig.height=12, fig.width=12}
 IMDB %>%
   filter(country != "" || country != "Official" || country != "New Line") %>% 
@@ -314,7 +310,6 @@ IMDB %>%
   )
 ```
 
-
 ### IMDB vs. Profitabilty
 In order to understand the relationship between IMDB score, profit and budget, I first plotted a 3-Dimensional scatter plot using the popular visualization package “plotly” to try to have a big picture about it. The result is an interactive plot, which makes it easier for us to observe the relationship between them. As previously discussed, this analysis only includes movies from USA.
 
@@ -351,7 +346,7 @@ IMDB.USA.profit %>%
 
 #### Commercial Success v.s. Critical Acclaim
 However, as people may be more interested in those films with huge commerical success, the top 30 profitable films were plotted as well as their gross and IMDB scores, where the vertical and the horizontal line refers to the median gross and the median IMDB score. Note that the bigger the point is, the more profit it has made.
-It follows that, when taking a closer look at relationship of these films with their IMDB ratings, there is little correlation found between them. This is as expected since 
+It follows that, when taking a closer look at relationship of these films with their IMDB ratings, there is little correlation found between them. This is as expected since most highly-rated films don't do well on box office.
 ```{r commercial-v-critical}
 P <- IMDB.USA.profit %>%
   top_n(30, profit) %>%
@@ -399,7 +394,7 @@ IMDB.USA.profit %>%
 ```
 
 #### Return on Investment as Profitability
-Nonetheless, the profit earned does not give a whole picture about monetary success of a movie throughout the years, so, in this case, Return on Investment is perhaps more suitable to describe the a movie's profitability. Thus, here is top 30 Movies with highest Return on Investment for movies of at least 10 millions dollars budget.
+Nonetheless, the profit earned does not give a whole picture about financial success of a movie throughout the years, so "Return on Investment (ROI)" is used to provide a different perspective about a movie's profitability. The following is top 30 Movies with highest Return on Investment for movies of at least 10 millions dollars budget. As expected, films with smaller budget have higher ROI and the ROI decreases as the budget grows bigger. Yet, we can see that the ROIs for movies with over $\$50M$ budget do not differ much.
 ```{r top-15-movies-roi}
 IMDB.USA.profit %>%
   filter(budget > 10) %>% 
@@ -416,12 +411,14 @@ IMDB.USA.profit %>%
     aes(label = movie_title)
   ) +
   xlab("Budget in Million Dollars") +
-  ylab("ROI in Million Dollars") +
+  ylab("ROI in Pecentage") +
   ggtitle("Top 30 Movies with Highest ROI")
 ```
 
-### Some Interesting Facts
+## Regression Analysis
 
+
+## Some Interesting Facts
 Top 10 movies with highest IMDB score.
 ```{r top-10-imdb-movies}
 IMDB %>%
@@ -443,13 +440,13 @@ IMDB %>%
 ```
 
 <!-- Top 10 directors with highest average Gross Earned, Profit, and Return on Investment. -->
-```{r top-10-dir-profitability}
-# IMDB.USA.profit %>%
-#   drop_na(director_name) %>% 
-#   group_by(director_name) %>%
-#   summarise(avg_profit = mean(profit), avg_budget = mean(budget), avg_ROI = mean(ROI)) %>%
-#   arrange(desc(avg_profit,budget,ROI)) %>%
-#   top_n(10, avg_profit)
-```
+<!-- ```{r top-10-dir-profitability} -->
+<!-- IMDB.USA.profit %>% -->
+<!--   drop_na(director_name) %>% -->
+<!--   group_by(director_name) %>% -->
+<!--   summarise(avg_profit = mean(profit), avg_budget = mean(budget), avg_ROI = mean(ROI)) %>% -->
+<!--   arrange(desc(avg_profit,budget,ROI)) %>% -->
+<!--   top_n(10, avg_profit) -->
+<!-- ``` -->
 
 # References
