@@ -1,5 +1,5 @@
 ---
-title: "MSDS 597 Final Project - Exploratory Data Analysis on IMDB Dataset"
+title: "MSDS 597 Final Project - Exploratory Data Analysis on IMDb Metadata"
 author: "Shang-Hao Huang"
 date: "April 2021"
 output:
@@ -157,7 +157,7 @@ knitr::kable(Var.tab, "simple")
 
 
 # Exploratory Data Analysis
-The analysis involves four main aspects: Genre, Country, IMDB score, and Profitability.
+The analysis involves four main aspects: Genre, Country, IMDB score, and how they relate to Profitability.
 
 <!-- ## Basic Analysis -->
 
@@ -201,19 +201,19 @@ genres.freq %>%
   layout(title = "Movie Genre Frequency Distribution", xaxis = list(title = "genre"))
 ```
 
-### Genres vs. Profitability
-Now, we want to identify which genre tend to have higher budget/gross/profit. As mentioned previously, this part involves movies only from USA due to the currency conversion issue. 
+### Genres vs. Profitability vs. IMDb Score
+Now, we want to identify which genre tend to have higher profitability as well as ratings. As mentioned previously, this part involves movies only from USA due to the currency conversion issue. 
 
 First, we calculate the average `budget`, `gross`, and `profit` (= `gross` - `budget`) for each genre.
 ```{r genre-profitability}
 IMDB.USA.genre <- IMDB.USA %>% 
-  drop_na(genres_new, gross, budget) %>%
+  drop_na(genres_new, gross, budget, imdb_score) %>%
   # select(genres_new, budget, gross) %>%
   mutate(profit = gross - budget) %>%
   # mutate(n = row_number()) %>%
   separate_rows(genres_new, sep = ' ') %>%
   group_by(genres_new) %>%
-  summarise(mean_gross = mean(gross), mean_budget = mean(budget), mean_profit = mean(profit))
+  summarise(mean_gross = mean(gross), mean_budget = mean(budget), mean_profit = mean(profit), mean_imdb = mean(imdb_score))
 
 IMDB.USA.genre
 ```
@@ -224,6 +224,7 @@ Then, we compared them using a grouped bar chart sorted by a descending order of
 2. In general, films of genres of bigger budget ($> \$80M$) tend to earn more profit, with "Action" being the only exception.
 3. Low-budget films of genres such as "Musical" and "Comedy" are really good investments.
 4. All the top 5 popular genres ("Drama", "Comedy", "Thriller", "Action", and "Romance") have average profit less than $\$20M$.
+5. Most profitable genres are not highly rated/
 
 ```{r genre-profitability-breakdown}
 IMDB.USA.genre %>% 
@@ -233,18 +234,19 @@ IMDB.USA.genre %>%
     name = 'Mean Profit',
     type = 'bar'
   ) %>% 
-  add_trace(y = ~ mean_gross, name = 'Mean Gross') %>%
-  add_trace(y = ~ mean_budget, name = 'Mean Budget') %>% 
-  layout(title = 'Genre Profitability Breakdown (USA)', xaxis = list(title = 'Genre'), yaxis = list(title = 'US Dollars'), barmode = 'group')
+  add_bars(y = ~ mean_gross, name = 'Mean Gross') %>%
+  add_bars(y = ~ mean_budget, name = 'Mean Budget') %>% 
+  add_lines(y = ~ mean_imdb, yaxis="y2", name = 'Mean Ratings') %>% 
+  layout(title = 'Genre Profitability Breakdown (USA)', xaxis = list(title = 'Genre'), yaxis = list(title = 'US Dollars'), barmode = 'group', yaxis2 = list(overlaying = "y", side = "right"))
 ```
 
 ## Country-related Analysis
-This part of the analysis aims to explore the nationality component of the data. First, we show the number of movies produced in each country through the years, as presented in the following heat map. We can see that most of the countries started producing movies in the early 2000s, except a handful which had prevalant movie production going on since the mid 1900s. Here are some insights that I've found:
+This part of the analysis aims to explore the nationality component of the data. First, we show the number of movies produced in each country through the years in the following heat map. We can see that most of the countries started producing movies in the early 2000s, except a handful which had prevalant movie production going on since the mid 1900s. Here are some insights that I've found:
 
-1. US has the most thriving movie industry, and movies are being produced since the early-mid nineties. 
-2. Japan, Italy, Germany and France being only other countries which produced significant number of movies before 1980s.
+1. US has the most thriving movie industry, and movies are being produced since the early-mid 80s 
+2. Japan, Italy, Germany and France being only other countries which produced significant number of movies before 80s.
 
-```{r movies-years-country, fig.height=12}
+```{r movies-years-country, fig.height=12, fig.align='left'}
 IMDB %>%
   filter(country != "" || country != "Official" || country != "New Line") %>% 
   drop_na(country) %>% 
@@ -265,7 +267,7 @@ IMDB %>%
 ```
 
 English is the language in which most movies are made, and US produces movies in most languages (14).
-```{r movies-country-langs, fig.height=12, fig.width=12}
+```{r movies-country-langs, fig.height=12, fig.width=12, fig.align='left'}
 IMDB %>%
   filter(country != "" || country != "Official" || country != "New Line") %>% 
   drop_na(country) %>% 
@@ -284,34 +286,93 @@ IMDB %>%
   )
 ```
 
+As can be seen from above result, this dataset consists predominantly of films from the US, it may not be a suitable dataset for us to analyze the profitability and rating of a film from the nationality perspective.
+
 ## IMDB Score Analysis
-In here, I tried to see which kind of movies are more successful in terms of the IMDB ratings.
+In this section, we tried to analyze what makes movies more successful in terms of the IMDb ratings.
 
-We first start by looking at the basic central tendency (mean) and the variation in movie score. Therefore, a histogram of IMDB score which also has the 5th and 95th percentile mark for the IMDB score.
-
-We first calculate some summary statistics of IMDB score. We can see that the mean IMDB Score is 6.4 and 90% of movies have a score between 8.1 and 4.3. IMDB scores follow a bell shaped distribution. So any movie having a score of more than 8.1 would be one of the top 5% movies in the world.
+First, to look at the basic central tendency (mean) and the variation in movie score, we plot a histogram of IMDb score along with several summary statistics. We can see that the mean IMDb Score is 6.4 and 90% of movies have a score between 8.0 and 4.6. IMDb scores follow a bell shaped distribution, and so a movie having a score $> 8.1$ would be the top 5% movies in the world.
 
 ```{r summaray-imdb}
-summary(IMDB[!is.na(IMDB$imdb_score), ]$imdb_score)
+IMDB.score <- IMDB %>% 
+  drop_na() %>% 
+  select(imdb_score)
+
+summary(IMDB.score)
+quantile(IMDB.score$imdb_score, c(.05, .95)) 
+# summary(IMDB[!is.na(IMDB$imdb_score), ]$imdb_score)
 ```
 
-IMDB score distribution.
+Here is the IMDb score distribution.
 ```{r imdb-distribution}
 IMDB %>%
   drop_na(imdb_score) %>%
   plot_ly(
     x = ~ imdb_score,
-    type = "histogram"
+    type = "histogram",
+    name = "IMDb Score"
   ) %>%
+  add_segments(x = 4.6, xend = 4.6, y = 0, yend = 250, name = "5 Percentile") %>%
+  add_segments(x = 5.9, xend = 5.9, y = 0, yend = 250, name = "1st Quantile") %>%
+  add_segments(x = 6.6, xend = 6.6, y = 0, yend = 250, name = "Median") %>%
+  add_segments(x = 7.2, xend = 7.2, y = 0, yend = 250, name = "3rd Quantile") %>%
+  add_segments(x = 8.0, xend = 8.0, y = 0, yend = 250, name = "95 Percentile") %>%
   layout(
-    title = "IMDB Score Distribution",
-    xaxis = list(title = "IMDB Score"),
+    title = "IMDb Score Distribution",
+    xaxis = list(title = "IMDb Score"),
     yaxis = list(title = "Count")
   )
 ```
 
+### Some Interesting Facts
+
+* Top 10 movies with highest IMDb score.
+```{r top-10-imdb-movies}
+IMDB %>%
+  drop_na(movie_title, imdb_score) %>%
+  group_by(movie_title) %>%
+  summarise(avg_imdb = mean(imdb_score)) %>%
+  arrange(desc(avg_imdb)) %>%
+  top_n(10, avg_imdb) %>%
+  plot_ly(
+    x =  ~ avg_imdb,
+    y =  ~ reorder(movie_title, avg_imdb),
+    type = 'bar',
+    orientation = 'h',
+    name = "Top 10 Movies with Highest IMDb Score",
+    marker = list(color = '#00dfad')
+  ) %>% 
+  layout(
+    xaxis = list(title = "IMDb Score"),
+    yaxis = list(title = "")
+  )
+
+```
+
+* Top 10 directors with highest average IMDb score.
+```{r top-10-dir-imdb}
+IMDB %>%
+  drop_na(director_name, imdb_score) %>%
+  group_by(director_name) %>%
+  summarise(avg_imdb = mean(imdb_score)) %>%
+  arrange(desc(avg_imdb)) %>%
+  top_n(10, avg_imdb) %>%
+  plot_ly(
+    x =  ~ avg_imdb,
+    y =  ~ reorder(director_name, avg_imdb),
+    type = 'bar',
+    orientation = 'h',
+    name = "Top 10 Directors with Highest IMDb Score",
+    marker = list(color = '#00dfad')
+  ) %>% 
+  layout(
+    xaxis = list(title = "IMDb Score"),
+    yaxis = list(title = "")
+  )
+```
+
 ### IMDB vs. Profitabilty
-In order to understand the relationship between IMDB score, profit and budget, I first plotted a 3-Dimensional scatter plot using the popular visualization package “plotly” to try to have a big picture about it. The result is an interactive plot, which makes it easier for us to observe the relationship between them. As previously discussed, this analysis only includes movies from USA.
+To understand the relationship between IMDB score, profit and budget, I first plotted a 3-Dimensional scatter plot using the popular visualization package “plotly” to try to have a big picture about it. The result is an interactive plot, which makes it easier for us to observe the relationship between them. As previously discussed, this analysis only includes movies from USA.
 
 ```{r imdb-usa-profit}
 IMDB.USA.profit <- IMDB.USA %>%
@@ -321,7 +382,7 @@ IMDB.USA.profit <- IMDB.USA %>%
   mutate(ROI = 100*profit/budget)
 ```
 
-From the plot, we can see that movies with higher IMDB score tend to have higher profit and significant number of movies end up losing money. Intuitively, IMDB score and groos might be correlated as people are more willing to watch famous and highly-rated movies.
+From the plot, we can see that movies with higher IMDb score tend to have higher profit and significant number of movies end up losing money. Intuitively, IMDB score and groos might be correlated as people are more willing to watch famous and highly-rated movies.
 ```{r imdb-profit-budget, fig.height=10}
 IMDB.USA.profit %>%
   plot_ly(
@@ -345,8 +406,8 @@ IMDB.USA.profit %>%
 
 
 #### Commercial Success v.s. Critical Acclaim
-However, as people may be more interested in those films with huge commerical success, the top 30 profitable films were plotted as well as their gross and IMDB scores, where the vertical and the horizontal line refers to the median gross and the median IMDB score. Note that the bigger the point is, the more profit it has made.
-It follows that, when taking a closer look at relationship of these films with their IMDB ratings, there is little correlation found between them. This is as expected since most highly-rated films don't do well on box office.
+However, as people may be more interested in those films with huge commerical success, the top 30 profitable films were plotted as well as their gross and IMDb scores, where the vertical and the horizontal line refers to the median gross and the median IMDb score. Note that the bigger the point is, the more profit it has made.
+It follows that, when taking a closer look at relationship of these films with their IMDb ratings, there is little correlation found between them. This is as expected since most highly-rated films don't do well on box office.
 ```{r commercial-v-critical}
 P <- IMDB.USA.profit %>%
   top_n(30, profit) %>%
@@ -373,16 +434,15 @@ P <- IMDB.USA.profit %>%
 ggplotly(P)
 ```
 
-
-These are the top 30 movies with highest Profit, along with its profit and Return on Investment. Note that the bigger a point is, the higher its ROI is. For movies with budget over 70 millions dollars, we can observe an upward trend close to linear, which can be inferred that bigger-budget movies tend to earn more profit. However, there's a downward trend when the budget is less than 70 millions dollars. Having a closer look at movies in this region, I found most of them produced in the 80s or early 90s, and so, their true budget should be higher with inflation being taken into consideration. 
+These are the top 30 movies with highest Profit, along with its profit and IMDb score. Note that the bigger a point is, the higher its IMDb score is. For movies with budget over 70 millions dollars, we can observe an upward trend close to linear, which can be inferred that bigger-budget movies tend to earn more profit. However, there's a downward trend when the budget is less than 70 millions dollars. Having a closer look, I found most of these movies produced in the 80s or early 90s, and so, their true budget should be higher with inflation being taken into consideration. 
 ```{r top-10-movie-profitability}
 IMDB.USA.profit %>%
-  select(movie_title, profit, ROI, budget, title_year) %>%
+  select(movie_title, profit, ROI, budget, title_year, imdb_score) %>%
   arrange(desc(profit)) %>%
   top_n(30, profit) %>%
   ggplot(aes(x = budget,
              y = profit)) +
-  geom_point(aes(size = ROI,
+  geom_point(aes(size = imdb_score,
                  color = title_year)) +
   geom_smooth() +
   geom_text_repel(aes(label = movie_title)) +
@@ -394,7 +454,7 @@ IMDB.USA.profit %>%
 ```
 
 #### Return on Investment as Profitability
-Nonetheless, the profit earned does not give a whole picture about financial success of a movie throughout the years, so "Return on Investment (ROI)" is used to provide a different perspective about a movie's profitability. The following is top 30 Movies with highest Return on Investment for movies of at least 10 millions dollars budget. As expected, films with smaller budget have higher ROI and the ROI decreases as the budget grows bigger. Yet, we can see that the ROIs for movies with over $\$50M$ budget do not differ much.
+Nonetheless, the profit earned does not give a whole picture about financial success of a movie throughout the years, so "Return on Investment (ROI)" is used to provide a different perspective about a movie's profitability. The following graph shows top 30 highest Return on Investment movies of at least 10 millions dollars budget. As expected, films with smaller budget have higher ROI and the ROI decreases as the budget grows bigger. Yet, we can see that the ROIs for movies with over $\$50M$ budget do not differ much.
 ```{r top-15-movies-roi}
 IMDB.USA.profit %>%
   filter(budget > 10) %>% 
@@ -413,30 +473,6 @@ IMDB.USA.profit %>%
   xlab("Budget in Million Dollars") +
   ylab("ROI in Pecentage") +
   ggtitle("Top 30 Movies with Highest ROI")
-```
-
-## Regression Analysis
-
-
-## Some Interesting Facts
-Top 10 movies with highest IMDB score.
-```{r top-10-imdb-movies}
-IMDB %>%
-  drop_na(movie_title, imdb_score) %>%
-  group_by(movie_title) %>%
-  summarise(avg_imdb = mean(imdb_score)) %>%
-  arrange(desc(avg_imdb)) %>%
-  top_n(10, avg_imdb)
-```
-
-Top 10 directors with highest average IMDB score.
-```{r top-10-dir-imdb}
-IMDB %>%
-  drop_na(director_name, imdb_score) %>%
-  group_by(director_name) %>%
-  summarise(avg_imdb = mean(imdb_score)) %>%
-  arrange(desc(avg_imdb)) %>%
-  top_n(10, avg_imdb)
 ```
 
 <!-- Top 10 directors with highest average Gross Earned, Profit, and Return on Investment. -->
