@@ -1,23 +1,26 @@
 ---
-title: "MSDS 597 Final Project - Exploratory Data Analysis on IMDb Metadata"
+title: "MSDS 597 Final Project - Exploratory Data Analysis on IMDb Movie Dataset"
 author: "Shang-Hao Huang"
 date: "April 2021"
 output:
   html_document:
     number_sections: yes
     toc: true
+    code_folding: hide
 bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, fig.align = "center", fig.width = 10)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, fig.align = "center", fig.width = 10)
 ```
 
 # Motiavtion \& Goal
-Although the main purpose of making film is entertainment, not earning enough profit puts filmmakers in an awkward situation that makes it difficult to keep producing high-quality movies. One most popular quality metric is the score from Internet Movie Database (IMDb).  Based on the movie metadata from IMDb, it would be interesting to analyze what makes a movie more successful than another, commercially and/or critically. So, the main goal of this project is to explore the IMDb dataset with focus on profit and IMDb score and present the findings in an intuitive and interactive way. And, if possible, to identify what features contribute to a highly rated/profitable film most significantly and try to predict a movie's profitability. 
+Although movies are mainly made for entertainment, not earning enough profit puts filmmakers in an awkward situation that makes it difficult to keep producing high-quality movies. One most popular quality metric is the score from Internet Movie Database (IMDb). Based on the metadata from IMDb, it would be interesting to analyze what makes a movie more successful than another, commercially and critically. 
+
+So, the main goal of this project is to explore the IMDb dataset with focus on profit and IMDb score and present the findings in an intuitive and interactive way. And, if possible, to identify what features contribute to a highly rated/profitable film the most and try to predict a movie's profitability. 
 
 These are the R packages required for this project.
-```{r load-packages, echo=TRUE}
+```{r load-packages}
 library(tidyverse)
 library(knitr)
 library(plotly)
@@ -28,14 +31,16 @@ library(openxlsx)
 ```
 
 # Data Sources \& Preparation
-The dataset used in this project came from the IMDb 5000 Movie Dataset from Kaggle. It recorded information on more than 5000 movies across 66 countries from 1916 to 2016. The dataset is available in a csv format file and is of size 1MB. Note that the original dataset is replaced on Kaggle website, and therefore I cannot access the original one. The following link is where I sourced the same data from: https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset [@Kaggle-IMDB-5000]. The data preparation part consists of the following tasks:
+The dataset used in this project came from the IMDb 5000 Movie Dataset from Kaggle. It recorded information on more than 5000 movies across 66 countries from 1916 to 2016. The dataset is available in a csv format file and is of size 1MB. Note that the original dataset is replaced on Kaggle website, and therefore I cannot access the original one. The following link is where I sourced the same data from: https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset [@Kaggle-IMDB-5000]. 
+
+The data preparation part consists of the following tasks:
 
 1. Import the data.
-2. Clean and tidy up the data to ensure its quality and make it easy to analyze.
-3. Provide detailed data description.
+2. Clean and tidy up the data to ensure its quality and make it easier to manipulate.
+3. Detail data description.
 
 ## Load Data
-Import the data and show the dimension and names of all attributes of the data. WThere are 5043 movies recorded in this dataset, and each record has 28 attributes., including information such as `Title of the movie`, `Name of the movie director`, `Country the movie was produced in`, `Budget of the movie (in USD)`, `Profitability`, and `IMDB score for the movie`.
+First, I import the data and check the dimension and names of all attributes of the data. There are 5043 movies recorded, and each record has 28 attributes, including information such as "Movie's Title", "Director's Name", "Budget of the movie", and "IMDb score of the movie".
 ```{r laod-data}
 url <- "https://raw.githubusercontent.com/TimotheusHuang/msds597finalproj/main/movie_metadata.csv"
 IMDB <- as_tibble(read.csv(url, stringsAsFactors = FALSE))
@@ -43,7 +48,7 @@ dim(IMDB)
 colnames(IMDB)
 ```
 
-Here is the preview the raw data.
+Here is the preview of the raw data.
 ```{r raw-data-preview}
 DT::datatable(IMDB %>% top_n(n = 100),
               options = list(
@@ -60,7 +65,7 @@ DT::datatable(IMDB %>% top_n(n = 100),
 ```
 
 ## Data Tidying \& Cleansing
-In order to get the data ready for analysis, some tidying and cleansing works need to be done. First, unnecessary characters in the `movie_title`, `genre` and `plot_keyword` columns were removed.
+Then, to get the data ready for analysis, some tidying and cleansing works need to be done. First, unnecessary characters in the `movie_title`, `genre` and `plot_keyword` columns were removed.
 ```{r spur-char-rmv}
 IMDB <- IMDB %>%
   mutate(movie_title = str_replace_all(movie_title, "\\Â", "")) %>%
@@ -68,18 +73,18 @@ IMDB <- IMDB %>%
   mutate(plot_keywords_new = str_replace_all(plot_keywords, "\\|", " "))
 ```
 
-Second, duplicates in the data in `movie_title` column were removed as they may affect later analysis. In total, 126 duplicate movies were removed.
+Second, duplicates in `movie_title` column were removed as they may affect later analysis. In total, 126 duplicate movies were removed.
 ```{r duplicate-rmv}
 sum(duplicated(IMDB$movie_title))
 IMDB <- IMDB[!duplicated(IMDB$movie_title),]
 ```
 
-Third, columns that contain currency, such as the `budget` and `gross`, may cause problems in later analysis because a few countries were not converted to US dollars, including "South Korea", "Japan", "Thailand", ..., etc. Furthermore, given that all of them are converted to US dollars, we still need to consider the inflation, and this makes the problem even more complicated. Thus, only movies from USA were kept for profitability analysis.
+Third, columns that contain currency, such as the `budget` and `gross`, may cause problems in later analysis because a few countries were not converted to US dollars, such as "South Korea" and "Japan". Furthermore, given that all of them are converted to US dollars, we still need to consider the inflation, which makes the problem even more complicated. Thus, only movies from USA were kept for the profitability analysis.
 ```{r currency-issue}
 IMDB %>% select(movie_title, budget, country, gross) %>% arrange(desc(budget))
 ```
 
-Then, an new column `profitable` was added to indicate if a movie is profitable, '1' means profitable (that is, `profit` $>$ `budget`). As this involving both `gross` and `budget` columns, only movies from USA have non-empty value for this column. This version of data is also saved to an Excel file for people who want to focus only on USA films.
+Then, an new column `profitable` was added to indicate if a movie is profitable, '1' means profitable (that is, `profit` $>$ `budget`). As this involving both `gross` and `budget` columns, only movies from USA have non-empty value for this column. This version of data is saved to an Excel file for people who want to focus only on USA films.
 ```{r imdb-usa}
 IMDB.USA <- IMDB %>%
   filter(country == "USA") %>%
@@ -88,32 +93,32 @@ IMDB.USA <- IMDB %>%
 write.xlsx(IMDB.USA, file = "IMDB-USA.xlsx")
 ```
 
-Last, ragarding records that contain missing values, to keep the entire dataset as complete as possible, I decided to not remove any rows with missing data and to handle this issue for each individual analysis. For example, when doing genre-wise analysis, those without values for genre variables are excluded from the analysis.
+Last, regarding records that contain missing values, to keep the entire dataset as complete as possible, I decided to not remove any rows with missing data and to handle this issue for each individual analysis. For example, when doing genre-wise analysis, those without values for genre variables are excluded from the analysis.
 
-Columns that contain most "NA" entries are `gross`, `budget`, and `aspect_ratio`.
-```{r comp-NAs}
-IMDB %>% 
-  summarise_all(~ sum(is.na(.))) %>%
-  pivot_longer(cols = `color`:`plot_keywords_new`, names_to = "Column Name", values_to = "NA_Count") %>%
-  arrange(desc(NA_Count))
-  # map(., ~sum(is.na(.)))
-```
+<!-- Columns that contain most "NA" entries are `gross`, `budget`, and `aspect_ratio`. -->
+<!-- ```{r comp-NAs} -->
+<!-- IMDB %>%  -->
+<!--   summarise_all(~ sum(is.na(.))) %>% -->
+<!--   pivot_longer(cols = `color`:`plot_keywords_new`, names_to = "Column Name", values_to = "NA_Count") %>% -->
+<!--   arrange(desc(NA_Count)) -->
+<!--   # map(., ~sum(is.na(.))) -->
+<!-- ``` -->
 
-Finishing the cleaning process, check dimesnion and list columns names of the cleaned data. Then, save it to an csv file.
+After the cleaning, there are 4917 records remain and each have 30 attributes, and then these are saved to a csv file for future use.
 ```{r save-cleaned-data}
 dim(IMDB)
 colnames(IMDB)
 write.xlsx(IMDB, file = "IMDB-cleaned.xlsx")
 ```
 
-Note that, after all the preprocessing, there are 3768 rows that do not have any missing value and they are also saved to an Excel sheet.
+And there are 3700 rows that do not have any missing value and they are also saved to a csv file.
 ```{r complete-cases}
 sum(complete.cases(IMDB %>% drop_na()))
 write.xlsx(IMDB %>% drop_na(), file = "IMDB-complete-only.xlsx")
 ```
 
 ## Data Description
-The following table lists the name, type, and description of each variable in the dataset.
+The following table gives the name, type, and description of each variable in the dataset.
 ```{r data-description}
 Var.tab <- tibble(
   Name = colnames(IMDB),
@@ -157,7 +162,7 @@ knitr::kable(Var.tab, "simple")
 
 
 # Exploratory Data Analysis
-The analysis involves four main aspects: Genre, Country, IMDB score, and how they relate to Profitability.
+The analysis is focused on four main aspects: Genre, Country, IMDb score, and how they relate to Profitability.
 
 <!-- ## Basic Analysis -->
 
@@ -176,7 +181,7 @@ The analysis involves four main aspects: Genre, Country, IMDB score, and how the
 Since most of movies in this dataset were categorized as multiple genres, some preprocessing on the genres must be done before actually analyzing the data.
 
 ### Genres Preprocessing
-First, the document-term matrix for genres was constructed using the package "TM".
+First, a document-term matrix for genres was constructed using the package "TM".
 ```{r construct-dtm}
 genres.dtm <- DocumentTermMatrix(Corpus(VectorSource(IMDB[!is.na(IMDB$genres_new), ]$genres_new)))
 genres.dtm
@@ -190,7 +195,7 @@ genres.freq
 ```
 
 ### Genres Distribution
-After preprocessing was done, we can start doing analysis about the genres data. First, we try to find which genres are used the most. By plotting distribution of genres frequency, we can see that the top 5 movie genres are "Drama", "Comedy", "Thriller", "Action", and "Romance".
+After preprocessing was done, I first try to find which genres are used the most. By plotting distribution of genres frequency, we can see that the top 5 movie genres are "Drama", "Comedy", "Thriller", "Action", and "Romance".
 ```{r genre-freq-distr}
 genres.freq %>%
   plot_ly(
@@ -202,9 +207,9 @@ genres.freq %>%
 ```
 
 ### Genres vs. Profitability vs. IMDb Score
-Now, we want to identify which genre tend to have higher profitability as well as ratings. As mentioned previously, this part involves movies only from USA due to the currency conversion issue. 
+Now, we want to identify which genre tend to have higher profitability as well as ratings. As mentioned before, this part involves movies only from USA due to the currency conversion issue. 
 
-First, we calculate the average `budget`, `gross`, and `profit` (= `gross` - `budget`) for each genre.
+First, I calculate the average `budget`, `gross`, and `profit` (= `gross` - `budget`) for each genre.
 ```{r genre-profitability}
 IMDB.USA.genre <- IMDB.USA %>% 
   drop_na(genres_new, gross, budget, imdb_score) %>%
@@ -218,13 +223,14 @@ IMDB.USA.genre <- IMDB.USA %>%
 IMDB.USA.genre
 ```
 
-Then, we compared them using a grouped bar chart sorted by a descending order of the mean profit. From the plot, we can find a few things:
+Then, I compared them using a grouped bar chart sorted by a descending order of the mean profit. And here are what I've found:
+<!-- From the plot, we can find a few things: -->
 
 1. Top 3 most profitable genres are "Animation", "Family", and "Musical".
 2. In general, films of genres of bigger budget ($> \$80M$) tend to earn more profit, with "Action" being the only exception.
 3. Low-budget films of genres such as "Musical" and "Comedy" are really good investments.
 4. All the top 5 popular genres ("Drama", "Comedy", "Thriller", "Action", and "Romance") have average profit less than $\$20M$.
-5. Most profitable genres are not highly rated/
+5. Most profitable genres are not highly rated.
 
 ```{r genre-profitability-breakdown}
 IMDB.USA.genre %>% 
@@ -241,12 +247,12 @@ IMDB.USA.genre %>%
 ```
 
 ## Country-related Analysis
-This part of the analysis aims to explore the nationality component of the data. First, we show the number of movies produced in each country through the years in the following heat map. We can see that most of the countries started producing movies in the early 2000s, except a handful which had prevalant movie production going on since the mid 1900s. Here are some insights that I've found:
+The second part of the analysis aims to explore the nationality component of the data. First, we show the number of movies produced in each country through the years in the following heat map. We can see that most of the countries started producing movies in the early 2000s, only a few had movie production since the 60s. Here are some insights that I've found:
 
-1. US has the most thriving movie industry, and movies are being produced since the early-mid 80s 
-2. Japan, Italy, Germany and France being only other countries which produced significant number of movies before 80s.
+1. US has the most prevalent movie industry, and it has been producing since the late 70s 
+2. Japan, Italy, Germany and France are only other countries which produced significant number of movies before 80s.
 
-```{r movies-years-country, fig.height=12, fig.align='left'}
+```{r movies-years-country, fig.align='left'}
 IMDB %>%
   filter(country != "" || country != "Official" || country != "New Line") %>% 
   drop_na(country) %>% 
@@ -254,7 +260,7 @@ IMDB %>%
   summarise(Count = n()) %>% 
   plot_ly(
     x = ~ title_year,
-    y = ~ country,
+    y = ~ reorder(country, -Count),
     z = ~ Count,
     type = "heatmap"
   ) %>%
@@ -266,8 +272,8 @@ IMDB %>%
 
 ```
 
-English is the language in which most movies are made, and US produces movies in most languages (14).
-```{r movies-country-langs, fig.height=12, fig.width=12, fig.align='left'}
+Next, I tried to find which language is used most frequently. Unsurprisingly, English is the language in which most movies are made, and US produces movies in most languages (14).
+```{r movies-country-langs, fig.align='left'}
 IMDB %>%
   filter(country != "" || country != "Official" || country != "New Line") %>% 
   drop_na(country) %>% 
@@ -288,10 +294,10 @@ IMDB %>%
 
 As can be seen from above result, this dataset consists predominantly of films from the US, it may not be a suitable dataset for us to analyze the profitability and rating of a film from the nationality perspective.
 
-## IMDB Score Analysis
-In this section, we tried to analyze what makes movies more successful in terms of the IMDb ratings.
+## IMDb Score Analysis
+Last, we tried to analyze what makes movies more successful in terms of the IMDb ratings.
 
-First, to look at the basic central tendency (mean) and the variation in movie score, we plot a histogram of IMDb score along with several summary statistics. We can see that the mean IMDb Score is 6.4 and 90% of movies have a score between 8.0 and 4.6. IMDb scores follow a bell shaped distribution, and so a movie having a score $> 8.1$ would be the top 5% movies in the world.
+First, to look at the basic central tendency (mean) and the variation in movie score, we plot a histogram of IMDb score along with several summary statistics. We can see that the mean IMDb Score is 6.4 and 80% of movies have a score between 7.7 and 5.1. For a movie to be a top $10\%$ in the worlds, it has to have a score of at least 7.7.
 
 ```{r summaray-imdb}
 IMDB.score <- IMDB %>% 
@@ -299,7 +305,7 @@ IMDB.score <- IMDB %>%
   select(imdb_score)
 
 summary(IMDB.score)
-quantile(IMDB.score$imdb_score, c(.05, .95)) 
+quantile(IMDB.score$imdb_score, c(.1, .9)) 
 # summary(IMDB[!is.na(IMDB$imdb_score), ]$imdb_score)
 ```
 
@@ -312,11 +318,11 @@ IMDB %>%
     type = "histogram",
     name = "IMDb Score"
   ) %>%
-  add_segments(x = 4.6, xend = 4.6, y = 0, yend = 250, name = "5 Percentile") %>%
+  add_segments(x = 5.1, xend = 5.1, y = 0, yend = 250, name = "10 Percentile") %>%
   add_segments(x = 5.9, xend = 5.9, y = 0, yend = 250, name = "1st Quantile") %>%
   add_segments(x = 6.6, xend = 6.6, y = 0, yend = 250, name = "Median") %>%
   add_segments(x = 7.2, xend = 7.2, y = 0, yend = 250, name = "3rd Quantile") %>%
-  add_segments(x = 8.0, xend = 8.0, y = 0, yend = 250, name = "95 Percentile") %>%
+  add_segments(x = 7.7, xend = 7.7, y = 0, yend = 250, name = "90 Percentile") %>%
   layout(
     title = "IMDb Score Distribution",
     xaxis = list(title = "IMDb Score"),
@@ -324,9 +330,9 @@ IMDB %>%
   )
 ```
 
-### Some Interesting Facts
+### Interesting Facts
 
-* Top 10 movies with highest IMDb score.
+* __Top 10 movies with highest IMDb score__
 ```{r top-10-imdb-movies}
 IMDB %>%
   drop_na(movie_title, imdb_score) %>%
@@ -341,7 +347,7 @@ IMDB %>%
     orientation = 'h',
     name = "Top 10 Movies with Highest IMDb Score",
     marker = list(color = '#00dfad')
-  ) %>% 
+  ) %>%
   layout(
     xaxis = list(title = "IMDb Score"),
     yaxis = list(title = "")
@@ -349,7 +355,7 @@ IMDB %>%
 
 ```
 
-* Top 10 directors with highest average IMDb score.
+* __Top 10 directors with highest average IMDb score__
 ```{r top-10-dir-imdb}
 IMDB %>%
   drop_na(director_name, imdb_score) %>%
@@ -364,15 +370,15 @@ IMDB %>%
     orientation = 'h',
     name = "Top 10 Directors with Highest IMDb Score",
     marker = list(color = '#00dfad')
-  ) %>% 
+  ) %>%
   layout(
     xaxis = list(title = "IMDb Score"),
     yaxis = list(title = "")
   )
 ```
 
-### IMDB vs. Profitabilty
-To understand the relationship between IMDB score, profit and budget, I first plotted a 3-Dimensional scatter plot using the popular visualization package “plotly” to try to have a big picture about it. The result is an interactive plot, which makes it easier for us to observe the relationship between them. As previously discussed, this analysis only includes movies from USA.
+### IMDb Score vs. Profitabilty
+To understand the relationship between IMDB score, profit and budget, I plotted a 3D scatter plot using the package “plotly” to try to have a big picture about it.
 
 ```{r imdb-usa-profit}
 IMDB.USA.profit <- IMDB.USA %>%
@@ -382,8 +388,8 @@ IMDB.USA.profit <- IMDB.USA %>%
   mutate(ROI = 100*profit/budget)
 ```
 
-From the plot, we can see that movies with higher IMDb score tend to have higher profit and significant number of movies end up losing money. Intuitively, IMDB score and groos might be correlated as people are more willing to watch famous and highly-rated movies.
-```{r imdb-profit-budget, fig.height=10}
+From the plot, we can see that movies with higher IMDb score tend to have higher profit and significant number of movies ended up losing money. This aligns with my intuition, IMDb score and gross might be correlated as people are more willing to watch famous and highly-rated movies. We also can observe that bigger budget does not guarantee the quality.
+```{r imdb-profit-budget, fig.height=10, echo=FALSE}
 IMDB.USA.profit %>%
   plot_ly(
     x = ~ imdb_score,
@@ -404,10 +410,9 @@ IMDB.USA.profit %>%
   )
 ```
 
-
 #### Commercial Success v.s. Critical Acclaim
-However, as people may be more interested in those films with huge commerical success, the top 30 profitable films were plotted as well as their gross and IMDb scores, where the vertical and the horizontal line refers to the median gross and the median IMDb score. Note that the bigger the point is, the more profit it has made.
-It follows that, when taking a closer look at relationship of these films with their IMDb ratings, there is little correlation found between them. This is as expected since most highly-rated films don't do well on box office.
+However, people may be more interested in those films with huge commerical success, the top 30 profitable films were plotted with their gross and IMDb scores. Note that the vertical and the horizontal line refers to the median gross and the median IMDb score, and bigger point means higher profit earned.
+Taking a closer look at relationship of these films with their IMDb ratings, we see little correlation between them. This is as expected since most highly-rated films don't do well on box office.
 ```{r commercial-v-critical}
 P <- IMDB.USA.profit %>%
   top_n(30, profit) %>%
@@ -416,8 +421,9 @@ P <- IMDB.USA.profit %>%
     y = gross,
     size = profit
   )) +
-  geom_point(aes(
-    color = content_rating)) +
+  geom_point() +
+  # geom_point(aes(
+  #   color = content_rating)) +
   geom_hline(aes(yintercept = median(gross))) +
   geom_vline(aes(xintercept = median(imdb_score))) +
   xlab("IMDB Score") +
@@ -434,7 +440,7 @@ P <- IMDB.USA.profit %>%
 ggplotly(P)
 ```
 
-These are the top 30 movies with highest Profit, along with its profit and IMDb score. Note that the bigger a point is, the higher its IMDb score is. For movies with budget over 70 millions dollars, we can observe an upward trend close to linear, which can be inferred that bigger-budget movies tend to earn more profit. However, there's a downward trend when the budget is less than 70 millions dollars. Having a closer look, I found most of these movies produced in the 80s or early 90s, and so, their true budget should be higher with inflation being taken into consideration. 
+Then, these 30 movies were plotted again, but, with their profits and IMDb scores. Similarly, bigger points mean higher IMDb scores. For movies with budget over 70 millions dollars, we can observe an upward trend close to linear, which can be inferred that bigger-budget movies tend to earn more profit. However, there's a downward trend when the budget is less than 70 millions dollars. Having a closer look, these movies are found to be produced in the 80s or early 90s, and so their true budget should be higher with inflation being taken into consideration. 
 ```{r top-10-movie-profitability}
 IMDB.USA.profit %>%
   select(movie_title, profit, ROI, budget, title_year, imdb_score) %>%
@@ -454,7 +460,7 @@ IMDB.USA.profit %>%
 ```
 
 #### Return on Investment as Profitability
-Nonetheless, the profit earned does not give a whole picture about financial success of a movie throughout the years, so "Return on Investment (ROI)" is used to provide a different perspective about a movie's profitability. The following graph shows top 30 highest Return on Investment movies of at least 10 millions dollars budget. As expected, films with smaller budget have higher ROI and the ROI decreases as the budget grows bigger. Yet, we can see that the ROIs for movies with over $\$50M$ budget do not differ much.
+However, the profit earned does not give a whole picture about financial success of a movie throughout the years, so "Return on Investment (ROI)" is used to provide a different perspective about a movie's profitability. The following graph shows top 30 highest Return on Investment movies of at least 10 millions dollars budget. As expected, films with smaller budget have higher ROI and the ROI decreases as the budget grows bigger. Yet, we can see that the ROIs for movies with over $\$20M$ budget do not differ much.
 ```{r top-15-movies-roi}
 IMDB.USA.profit %>%
   filter(budget > 10) %>% 
