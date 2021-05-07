@@ -29,7 +29,7 @@ library(openxlsx)
 ```
 
 # Data Sources \& Preparation
-The dataset used in this project came from the IMDb 5000 Movie Dataset from Kaggle. It recorded information on more than 5000 movies across 66 countries from 1916 to 2016. The dataset is available in a csv format file and is of size 1MB. Note that the original dataset is replaced on Kaggle website, and therefore we cannot access the original one. The following link is where we accessed data: https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset [@Kaggle-IMDB-5000]. 
+The dataset used in this project came from the IMDb 5000 Movie Dataset from Kaggle. It recorded information on more than 5000 movies across 66 countries from 1916 to 2016. The dataset is available in a csv format file and is of size 1MB. Note that the original dataset is replaced on Kaggle website, and therefore we cannot access the original one. The following link is where we accessed the same data: https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset [@Kaggle-IMDB-5000]. 
 
 The data preparation part consists of the following tasks:
 
